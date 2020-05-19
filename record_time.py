@@ -6,6 +6,10 @@ import numpy as np
 import paho.mqtt.client as mqtt
 
 COLUMNS = ["Work_start", "Rest_start", "Rest_end", "Work_end", "Work_time"]
+WORK_INSTRUCTION = ["勤務", "仕事", "ワーク",]
+REST_INSTRUCTION = ["休憩", "中断", "一休み"]
+START_INSTRUCTION = ["スタート", "開始", "始め"]
+END_INSTRUCTION = ["エンド", "終了", "やめ"]
 PERIODS = 50
 CSV_PATH = "./work_table.csv"
 
@@ -24,40 +28,63 @@ def on_message(client, userdata, msg):
     data = json.loads(msg.payload.decode("utf-8"))["data"][0]
     data = {key:value.strip() for key, value in data.items()}
     print(data)
+    work_or_rest, start_or_end = data["what"].split()
+    print(work_or_rest, start_or_end)
 
-    if "スタート" == data["what"] or "開始" == data["what"]:
-        print("Start working!")
-        start_dt = datetime.datetime.now()
-        start_day = start_dt.date()
-        start_time = start_dt.strftime("%X")
-        # start_time = start_dt.time()
-        time_df.loc[start_day, "Work_start"] = start_time
-
-    elif "終わり" == data["what"] or "終了" == data["what"]:
-        print("End working!")
-        end_dt = datetime.datetime.now()
-        end_day = end_dt.strftime("%Y-%m-%d")
-        end_time = end_dt.strftime("%X")
-        time_df.loc[end_day, "Work_end"] = end_time
-
-        start_time = time_df.at[end_day, "Work_start"]
-        start_time = datetime.datetime.strptime(start_time, "%X")
-        end_time = datetime.datetime.strptime(end_time, "%X")
-
-        time_df.loc[end_day, "Work_time"] = end_time - start_time
+    record_time(what=work_or_rest, how=start_or_end)
 
     time_df.to_csv(CSV_PATH)
     print(time_df.head())
 
+def record_time(what="work", how="start"):
+    dt = datetime.datetime.now()
+    day = dt.date()
+    time = dt.strftime("%X")
+    # start_time = start_dt.time()
+    if what in WORK_INSTRUCTION:
+        if how in START_INSTRUCTION:
+            print("Work Start!")
+            time_df.at[day, "Work_start"] = time
+        elif how in END_INSTRUCTION:
+            print("Work End!")
+            time_df.at[day, "Work_end"] = time
 
-# if os.path.exists(CSV_PATH):
-#     time_df = pd.read_csv(CSV_PATH, index_col=0)
+            work_start_time = time_df.at[day, "Work_start"]
+            rest_start_time = time_df.at[day, "Rest_start"]
+            rest_end_time = time_df.at[day, "Rest_end"]
+            work_start_time = datetime.datetime.strptime(work_start_time, "%X")
+            rest_start_time = datetime.datetime.strptime(rest_start_time, "%X")
+            rest_end_time = datetime.datetime.strptime(rest_start_time, "%X")
 
-# else:
-ini_mat = np.empty((PERIODS, len(COLUMNS)))
-ini_mat[:,:] = np.nan
-date_index = pd.date_range("2020-5-15", periods=PERIODS, freq="D")
-time_df = pd.DataFrame(ini_mat, index=date_index, columns=COLUMNS)
+            one_hour = datetime.time(hour=1)
+            rest_time = rest_end_time - rest_start_time
+            rest_time = one_hour if rest_time < one_hour else rest_time
+
+            end_time = datetime.datetime.strptime(time, "%X")
+            time_df.at[day, "Work_time"] = end_time - start_time - rest_time
+        else:
+            print(" Error! When record about work.")
+    elif what in REST_INSTRUCTION:
+        if how in START_INSTRUCTION:
+            print("Rest Start!")
+            time_df.at[day, "Rest_start"] = time
+        elif how in END_INSTRUCTION:
+            print("Rest End!")
+            time_df.at[day, "Rest_end"] = time
+        else:
+            print(" Error! When record about rest.")
+
+
+if os.path.exists(CSV_PATH):
+    time_df = pd.read_csv(CSV_PATH, index_col=0)
+
+else:
+    print("Make new csv...")
+    ini_mat = np.empty((PERIODS, len(COLUMNS)))
+    ini_mat[:,:] = np.nan
+    date_index = pd.date_range("2020-5-15", periods=PERIODS, freq="D")
+    time_df = pd.DataFrame(ini_mat, index=date_index, columns=COLUMNS)
+    print("Done!")
 
 client = mqtt.Client()
 client.username_pw_set("token:%s"%TOKEN)
