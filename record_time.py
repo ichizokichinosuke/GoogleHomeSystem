@@ -1,11 +1,13 @@
 import json
 import datetime
+import os
 import pandas as pd
 import numpy as np
 import paho.mqtt.client as mqtt
 
 COLUMNS = ["Work_start", "Rest_start", "Rest_end", "Work_end"]
 PERIODS = 50
+CSV_PATH = "./work_table.csv"
 
 TOKEN = "token_iwZlPmqHXaxtbY3q"
 HOSTNAME = "mqtt.beebotte.com"
@@ -36,13 +38,19 @@ def on_message(client, userdata, msg):
         end_time = end_dt.strftime("%X")
         time_df.loc[end_day, "Work_end"] = end_time
 
+    time_df.to_csv(CSV_PATH)
     print(time_df.head())
 
-ini_mat = np.empty((PERIODS, 4))
-ini_mat[:,:] = np.nan
-date_index = pd.date_range("2020-5-15", periods=PERIODS, freq="D")
-time_df = pd.DataFrame(ini_mat, index=date_index, columns=COLUMNS)
 
+
+if os.path.exists(CSV_PATH):
+    time_df = pd.read_csv(CSV_PATH, index_col=0)
+
+else:
+    ini_mat = np.empty((PERIODS, 4))
+    ini_mat[:,:] = np.nan
+    date_index = pd.date_range("2020-5-15", periods=PERIODS, freq="D")
+    time_df = pd.DataFrame(ini_mat, index=date_index, columns=COLUMNS)
 
 client = mqtt.Client()
 client.username_pw_set("token:%s"%TOKEN)
@@ -50,5 +58,4 @@ client.on_connect = on_connect
 client.on_message = on_message
 client.tls_set(CACERT)
 client.connect(HOSTNAME, port=PORT, keepalive=60)
-time_df.to_csv("work_table")
 client.loop_forever()
