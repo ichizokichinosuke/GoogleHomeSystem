@@ -74,18 +74,19 @@ def record_time(what="work", how="start"):
         else:
             print(" Error! When record about rest.")
 
+def load_table():
+    if os.path.exists(CSV_PATH):
+        time_df = pd.read_csv(CSV_PATH, index_col=0)
 
-if os.path.exists(CSV_PATH):
-    time_df = pd.read_csv(CSV_PATH, index_col=0)
+    else:
+        ini_mat = np.empty((PERIODS, len(COLUMNS)))
+        ini_mat[:,:] = np.nan
+        date_index = pd.date_range(datetime.date.today(), periods=PERIODS, freq="D")
+        time_df = pd.DataFrame(ini_mat, index=date_index, colusmn=COLUMNS)
 
-else:
-    print("Make new csv...")
-    ini_mat = np.empty((PERIODS, len(COLUMNS)))
-    ini_mat[:,:] = np.nan
-    date_index = pd.date_range("2020-5-15", periods=PERIODS, freq="D")
-    time_df = pd.DataFrame(ini_mat, index=date_index, columns=COLUMNS)
-    print("Done!")
+    return time_df
 
+time_df = load_table()
 client = mqtt.Client()
 client.username_pw_set("token:%s"%TOKEN)
 client.on_connect = on_connect
