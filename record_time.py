@@ -4,6 +4,10 @@ import os
 import pandas as pd
 import numpy as np
 import paho.mqtt.client as mqtt
+# import ssl
+
+# context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+# TLS_v = ssl.PROTOCOL_TLSv1_2
 
 COLUMNS = ["Work_start", "Rest_start", "Rest_end", "Work_end", "Work_time"]
 WORK_INSTRUCTION = ["勤務", "仕事", "ワーク",]
@@ -37,6 +41,7 @@ def on_message(client, userdata, msg):
     time_df.to_csv(CSV_PATH)
     print(time_df.head())
 
+# 勤務時間を記録
 def calc_work_hour(day, work_end_time):
     null_df = time_df.isnull()
     work_end_time = datetime.datetime.strptime(work_end_time, "%X")
@@ -65,7 +70,7 @@ def calc_work_hour(day, work_end_time):
         time_df.at[day, "Work_time"] = work_end_time - work_start_time - one_hour
     # rest_time = rest_end_time - rest_start_time
 
-
+# 指示のあった時間を記録
 def record_time(what="work", how="start"):
     dt = datetime.datetime.now()
     day = dt.date()
@@ -94,6 +99,7 @@ def record_time(what="work", how="start"):
         else:
             print(" Error! When record about rest.")
 
+# csvファイルの読み込みもしくは作成
 def load_table():
     if os.path.exists(CSV_PATH):
         print("Loading..")
