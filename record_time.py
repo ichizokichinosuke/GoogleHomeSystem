@@ -4,9 +4,9 @@ import os
 import pandas as pd
 import numpy as np
 import paho.mqtt.client as mqtt
-# import ssl
+import ssl
 
-# context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
 # TLS_v = ssl.PROTOCOL_TLSv1_2
 
 COLUMNS = ["Work_start", "Rest_start", "Rest_end", "Work_end", "Work_time"]
@@ -23,6 +23,7 @@ HOSTNAME = "mqtt.beebotte.com"
 PORT = 8883
 TOPIC = "LocalTest/voice"
 CACERT = "mqtt.beebotte.com.pem"
+SEC_PEM = '/usr/local/ssl/cert.pem'
 
 
 def on_connect(client, userdata, flags, respons_code):
@@ -45,7 +46,6 @@ def on_message(client, userdata, msg):
 def calc_work_hour(day, work_end_time):
     null_df = time_df.isnull()
     work_end_time = datetime.datetime.strptime(work_end_time, "%X")
-    print(work_end_time)
 
     if not null_df.at[day, "Work_start"]:
         work_start_time = time_df.at[day, "Work_start"]
@@ -68,7 +68,6 @@ def calc_work_hour(day, work_end_time):
             one_hour = datetime.timedelta(hours=REST_HOUR)
 
         time_df.at[day, "Work_time"] = work_end_time - work_start_time - one_hour
-    # rest_time = rest_end_time - rest_start_time
 
 # 指示のあった時間を記録
 def record_time(what="work", how="start"):
@@ -76,7 +75,6 @@ def record_time(what="work", how="start"):
     day = dt.date()
     day = day.strftime("%Y-%m-%d")
     time = dt.strftime("%X")
-    # start_time = start_dt.time()
     if what in WORK_INSTRUCTION:
         if how in START_INSTRUCTION:
             print("Work Start!")
@@ -115,9 +113,13 @@ def load_table():
 
 time_df = load_table()
 client = mqtt.Client()
+client.tls_set_context(context=context)
+
 client.username_pw_set("token:%s"%TOKEN)
 client.on_connect = on_connect
 client.on_message = on_message
-client.tls_set(CACERT)
+# client.tls_set(CACERT, keyfile=SEC_PEM, tls_version=TLS_v)
+# client.tls_insecure_set(True)
+
 client.connect(HOSTNAME, port=PORT, keepalive=60)
 client.loop_forever()
