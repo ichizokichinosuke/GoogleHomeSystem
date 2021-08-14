@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import paho.mqtt.client as mqtt
 import ssl
+import numpy as np
 
 context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
 # TLS_v = ssl.PROTOCOL_TLSv1_2
